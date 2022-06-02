@@ -1,0 +1,40 @@
+ARG BUILD_BASE
+ARG BASE
+ARG LLVM_VERSION
+
+FROM ${BUILD_BASE} AS BUILDER
+
+ARG LLVM_VERSION
+
+ENV LLVM_VERSION ${LLVM_VERSION}
+ENV DEBIAN_FRONTEND noninteractive 
+
+RUN apt update -y \ 
+  && apt install -y pbuilder aptitude clang-${LLVM_VERSION} \
+  && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} 60
+
+WORKDIR /usr/local/src/bcc
+
+RUN /usr/lib/pbuilder/pbuilder-satisfydepends \
+	&& scripts/build-deb.sh release
+
+FROM ${BASE}
+LABEL maintainer="gavin.jeong <gavin.jeong@sendbird.com>"
+
+ENV DEBIAN_FRONTEND noninteractive 
+
+COPY --from=BUILDER /usr/local/src/bcc/*.deb /root/
+
+RUN apt update -y \ 
+  && apt install -y \
+    python python3 python3-pip binutils libelf1 kmod auditd \
+  && pip3 install dnslib cachetools \
+  && dpkg -i /root/*.deb \
+  && rm -rf /root/*.deb \
+  && apt clean auotoclean \
+  && apt autoremove --yes \
+  && rm -rf /var/lib/{apt,dpkg,cache,log}
+
+COPY entrypoint.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["bash"]

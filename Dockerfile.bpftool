@@ -1,0 +1,31 @@
+ARG BUILD_BASE
+ARG BASE
+ARG BPFTOOL_VERSION
+
+FROM ${BUILD_BASE} AS BUILDER
+LABEL maintainer="gavin.jeong <gavin.jeong@sendbird.com>"
+
+ARG BPFTOOL_VERSION="v6.8.0"
+ENV BPFTOOL_VERSION=${BPFTOOL_VERSION}
+
+WORKDIR /usr/local/src
+
+RUN git clone -b $BPFTOOL_VERSION https://github.com/libbpf/bpftool \
+  && cd bpftool \
+  && git submodule update --init \
+  && cd src \
+  && FLAGS=--static make CC=gcc
+
+FROM ${BASE}
+LABEL maintainer="gavin.jeong <gavin.jeong@sendbird.com>"
+
+RUN apt update -y \
+  && apt install -y \
+    libelf-dev \
+    libbfd-dev
+
+COPY --from=BUILDER /usr/local/src/bpftool/src/bpftool /usr/bin/bpftool
+
+COPY entrypoint.sh /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["bash"]
