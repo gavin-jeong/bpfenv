@@ -1,0 +1,44 @@
+ARG BASE
+ARG ARCH
+ARG LLVM_VERSION
+
+FROM ${BASE}
+
+ARG BASE
+ARG ARCH
+ARG LLVM_VERSION=12
+ARG GCC_VERSION=9
+
+ENV BASE=${BASE}
+ENV ARCH=${ARCH}
+ENV LLVM_VERSION=${LLVM_VERSION}
+ENV GCC_VERSION=${GCC_VERSION}
+
+COPY cmake /usr/local/src/llvm/cmake
+COPY CMakeLists-LLVM.txt /usr/local/src/llvm/CMakeLists.txt
+
+RUN apt update \
+  && apt install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    g++-${GCC_VERSION} \
+    gcc-${GCC_VERSION} \
+    gcc-${GCC_VERSION}-plugin-dev \
+    make \
+    python \
+    python3 \
+    rsync \
+    tar \
+    cmake \
+  && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 60 \
+                         --slave /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} \
+  && cp /usr/lib/gcc/${ARCH}-linux-gnu/${GCC_VERSION}/plugin/include/plugin-api.h /usr/local/include
+
+WORKDIR /usr/local/src/llvm
+RUN cmake . -DLLVM_VERSION=${LLVM_VERSION} -DCMAKE_BUILD_TYPE=Release \
+  && make embedded_llvm -j$(nproc) \
+  && make embedded_clang -j$(nproc) \
+  && rm -rf embedded_llvm-prefix/src embedded_clang-prefix/src \
+  && rm -rf embedded_llvm-prefix/tmp embedded_clang-prefix/tmp \
+  && rsync -a embedded_clang-prefix/ embedded_llvm-prefix/ /usr/local \
+  && rm -rf /usr/local/src/llvm

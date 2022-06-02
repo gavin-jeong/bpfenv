@@ -1,0 +1,55 @@
+ARG BASE
+ARG BCC_VERSION
+
+FROM ${BASE}
+
+ARG CMAKE_VER="3.16"
+ARG CMAKE_BUILD="2"
+ARG BCC_VERSION="v0.24.0"
+
+ENV LLVM_VERSION=$LLVM_VERSION
+ENV CMAKE_VER=${CMAKE_VER}
+ENV CMAKE_BUILD="${CMAKE_BUILD}"
+
+RUN apt-get update \
+    && apt-get install -y \
+        asciidoctor \
+        bison \
+        binutils-dev \
+        flex \
+        git \
+        libelf-dev \
+        zlib1g-dev \
+        libiberty-dev \
+        libbfd-dev \
+        libcereal-dev \
+        libedit-dev \
+        systemtap-sdt-dev \
+        python3 \
+        python3-setuptools \
+        quilt \
+        libssl-dev \
+        libgmock-dev \
+    && apt-get install --no-install-recommends -y \
+        pkg-config
+
+WORKDIR /usr/local/src
+
+RUN git clone -b ${BCC_VERSION} https://github.com/iovisor/bcc bcc \
+    && cd bcc \
+    && git submodule update \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+         -DCMAKE_INSTALL_PREFIX=/usr/local \
+         -DENABLE_EXAMPLES=0 -DENABLE_MAN=0 -DENABLE_TESTS=0 \
+         -DENABLE_LLVM_NATIVECODEGEN=0 \
+    && make -j$(nproc) \
+    && make install
+
+RUN cd /usr/local/src/bcc/src/cc/libbpf \
+  && cd src \
+  && CC=gcc make -j$(nproc) \
+  && PREFIX=/usr/local LIBDIR=/usr/local/lib make install install_uapi_headers
+
+ENV PYTHONPATH /usr/local/lib/python3/dist-packakges:$PYTHONPATH
