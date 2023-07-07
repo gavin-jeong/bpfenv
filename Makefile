@@ -1,7 +1,7 @@
 NAMESPACE=gavinjeong
 BASE=focal
-BPFTRACE_VERSION=v0.15.0
-BCC_VERSION=v0.24.0
+BPFTRACE_VERSION=v0.18.0
+BCC_VERSION=v0.27.0
 BPFTOOL_VERSION=v6.8.0
 LLVM_VERSION=12
 
@@ -33,10 +33,11 @@ bpftrace/arm64 bpftrace/amd64: ## Build bpftrace
 		--build-arg BASE=ubuntu:$(BASE) \
 		-t $(NAMESPACE)/$(TARGET):$(BPFTRACE_VERSION)-$(COMMON_TAG_POSTFIX) \
 		-f Dockerfile.$(TARGET) \
+		--no-cache \
 		.
 .PHONY=bpftrace/arm64 bpftrace/amd64
 
-bcc/arm64 bcc/amd64: ## Build bpftrace
+bcc/arm64 bcc/amd64: ## Build bcc
 	docker build \
 		--platform linux/$(ARCH) \
 		--build-arg BUILD_BASE=$(NAMESPACE)/bpf-base:$(BCC_VERSION)-$(COMMON_TAG_POSTFIX) \

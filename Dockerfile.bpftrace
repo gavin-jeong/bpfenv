@@ -5,26 +5,29 @@ ARG BPFTRACE_VERSION
 FROM ${BUILD_BASE} AS BUILDER
 LABEL maintainer="gavin.jeong <gavin.jeong@sendbird.com>"
 
-ARG BPFTRACE_VERSION="v0.15.0"
+ARG BPFTRACE_VERSION="v0.18.0"
 ENV BPFTRACE_VERSION=${BPFTRACE_VERSION}
 
 ENV DEBIAN_FRONTEND noninteractive 
 
 WORKDIR /usr/local/src
 RUN git clone -b ${BPFTRACE_VERSION} https://github.com/iovisor/bpftrace \
+  && cd bpftrace \
+  && git submodule init \
+  && git submodule update \
   && STATIC_LINKING=ON \
   STATIC_LIBC=OFF \
   ALLOW_UNSAFE_PROBE=OFF \
   VENDOR_GTEST=ON \
   RUN_TESTS=0 \
   EMBED_USE_LLVM=ON \
-  ./bpftrace/docker/build.sh bpftrace/build Release "$@"
+  docker/build.sh docker Release "$@"
 
 FROM ${BASE}
 LABEL maintainer="gavin.jeong <gavin.jeong@sendbird.com>"
 
 RUN apt update -y \
-  && apt install -y libc6-dev \
+  && apt install -y libc6-dev libdw-dev \
   && apt clean auotoclean \
   && apt autoremove --yes \
   && rm -rf /var/lib/{apt,dpkg,cache,log}

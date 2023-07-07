@@ -175,6 +175,7 @@ usdt:/proc/1/root/usr/bin/python3:python:line
 If there is no list of probe, you have to check the belows
 - What kind of python implementation it uses?
 - What kind of build option is used to build the python?
+- [Where](Where) the probe is embeded? in executable or shared object?
 
 ```python
 >>> import platform
@@ -193,4 +194,17 @@ See it is built with the flag '--with-dtrace'
 In this case we could trace its function call with below script.
 ```bash
 $ bpftrace --usdt-file-activation -e 'usdt:/proc/1/root/usr/bin/python3:python:function__entry* { printf("%s:%s:%d\n", str(arg0), str(arg1), arg2); }'
+```
+
+If you can't find related probe from your executable,
+you can check it from its PID
+```bash
+$ bpftrace -l -p ${PID} 'usdt:*'| grep function__
+usdt:/proc/4022/root/usr/local/lib/libpython3.8.so.1.0:python:function__entry
+usdt:/proc/4022/root/usr/local/lib/libpython3.8.so.1.0:python:function__return
+```
+
+Then 
+```bash
+$ bpftrace --usdt-file-activation -e 'usdt:/proc/4022/root/usr/local/lib/libpython3.8.so.1.0:python:function__entry* { printf("%s:%s:%d\n", str(arg0), str(arg1), arg2); }'
 ```

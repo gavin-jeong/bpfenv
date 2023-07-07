@@ -122,6 +122,8 @@ kubectl run -n default $name-$pod \
           }
         ],
         "securityContext": {
+          "allowPrivilegeEscalation": true,
+          "privileged": true,
           "capabilities": {
             "add": [
               "NET_ADMIN",
@@ -135,11 +137,6 @@ kubectl run -n default $name-$pod \
             "mountPath": "/etc/os-release",
             "readOnly": true,
             "name": "osrelease"
-          },
-          {
-            "mountPath": "/etc/localtime",
-            "readOnly": true,
-            "name": "localtime"
           },
           {
             "mountPath": "/sys",
@@ -157,16 +154,6 @@ kubectl run -n default $name-$pod \
             "mountPath": "/boot",
             "readOnly": true,
             "name": "boot"
-          },
-          {
-            "mountPath": "/usr/bin/docker",
-            "readOnly": true,
-            "name": "dockerbin"
-          },
-          {
-            "mountPath": "/var/run/docker.sock",
-            "readOnly": true,
-            "name": "dockersock"
           }
         ]
       }
@@ -180,13 +167,6 @@ kubectl run -n default $name-$pod \
           "type": "File"
         },
         "name": "osrelease"
-      },
-      {
-        "hostPath": {
-          "path": "/etc/localtime",
-          "type": "File"
-        },
-        "name": "localtime"
       },
       {
         "hostPath": {
@@ -215,20 +195,6 @@ kubectl run -n default $name-$pod \
           "type": "Directory"
         },
         "name": "boot"
-      },
-      {
-        "hostPath": {
-          "path": "/usr/bin/docker",
-          "type": "File"
-        },
-        "name": "dockerbin"
-      },
-      {
-        "hostPath": {
-          "path": "/var/run/docker.sock",
-          "type": "Socket"
-        },
-        "name": "dockersock"
       }
     ],
     "nodeSelector": {
