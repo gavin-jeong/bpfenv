@@ -1,0 +1,19 @@
+#!/usr/bin/bpftrace
+
+#include <net/sock.h>
+#include <linux/tcp.h>
+
+BEGIN
+{
+        printf("event,sock,time_us,snd_cwnd,snd_ssthresh,sk_sndbuf,");
+        printf("sk_wmem_queued\n");
+}
+
+kprobe:tcp_rcv_established
+{
+        $sock = (struct sock *)arg0;
+        $tcps = (struct tcp_sock *)arg0; // see tcp_sk()
+        printf("rcv,0x%llx,%lld,%d,%d,%d,%d\n", arg0, elapsed / 1000,
+            $tcps->snd_cwnd, $tcps->snd_ssthresh, $sock->sk_sndbuf,
+            $sock->sk_wmem_queued);
+}

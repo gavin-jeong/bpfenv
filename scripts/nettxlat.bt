@@ -1,0 +1,29 @@
+#!/usr/bin/bpftrace
+
+BEGIN
+{
+        printf("Tracing net device xmit queue latency. Hit Ctrl-C to end.\n");
+}
+
+tracepoint:net:net_dev_start_xmit
+{
+        @start[args->skbaddr] = nsecs;
+}
+
+tracepoint:skb:consume_skb
+/@start[args->skbaddr]/
+{
+        @us = hist((nsecs - @start[args->skbaddr]) / 1000);
+        delete(@start[args->skbaddr]);
+}
+
+tracepoint:net:net_dev_queue
+{
+        // avoid timestamp reuse:
+        delete(@start[args->skbaddr]);
+}
+
+END
+{
+        clear(@start);
+}

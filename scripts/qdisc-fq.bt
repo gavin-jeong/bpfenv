@@ -1,0 +1,23 @@
+#!/usr/bin/bpftrace
+
+BEGIN
+{
+        printf("Tracing qdisc fq latency. Hit Ctrl-C to end.\n");
+}
+
+kprobe:fq_enqueue
+{
+        @start[arg0] = nsecs;
+}
+
+kretprobe:fq_dequeue
+/@start[retval]/
+{
+        @us = hist((nsecs - @start[retval]) / 1000);
+        delete(@start[retval]);
+}
+
+END
+{
+        clear(@start);
+}

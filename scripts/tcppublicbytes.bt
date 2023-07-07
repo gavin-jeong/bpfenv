@@ -1,0 +1,71 @@
+#!/usr/bin/env bpftrace
+
+#ifndef BPFTRACE_HAVE_BTF
+#include <linux/socket.h>
+#include <net/sock.h>
+#else
+#include <sys/socket.h>
+#endif
+
+BEGIN {
+}
+
+k:tcp_sendmsg
+{
+  @sk[tid] = arg0;
+  @size[tid] = arg2;
+}
+
+kr:tcp_sendmsg
+/@sk[tid]/
+{
+  $sk = (struct sock *)@sk[tid];
+  $size = @size[tid];
+  $af = $sk->__sk_common.skc_family;
+  if ($af == AF_INET) {
+    $daddr = ntop($af, $sk->__sk_common.skc_daddr);
+    $saddr = ntop($af, $sk->__sk_common.skc_rcv_saddr);
+    $lport = $sk->__sk_common.skc_num;
+    $dport = $sk->__sk_common.skc_dport;
+    $dport = ($dport >> 8) | (($dport << 8) & 0xff00);
+
+    $daddr_number = (uint32)$sk->__sk_common.skc_daddr;
+    $saddr_number = (uint32)$sk->__sk_common.skc_rcv_saddr;
+
+    $prange1 = (uint32)((0<<24) + (0<<16) + (0 <<8) + 10);
+    $prange2 = (uint32)((0<<24) + (0<<16) + (16 <<8) + 172);
+    $prange3 = (uint32)((0<<24) + (0<<16) + (168 <<8) + 192);
+    $prange4 = (uint32)((0<<24) + (0<<16) + (0 <<8) + 127);
+
+    $daddr_public = 1;
+    if (
+      ($daddr_number & $prange1) == (uint32)$prange1 ||
+      ($daddr_number & $prange2) == (uint32)$prange2 ||
+      ($daddr_number & $prange3) == (uint32)$prange3 ||
+      ($daddr_number & $prange4) == (uint32)$prange4
+    )  {
+      $daddr_public = 0;
+    }
+
+    $saddr_public = 1;
+    if (
+      ($saddr_number & $prange1) == (uint32)$prange1 ||
+      ($saddr_number & $prange2) == (uint32)$prange2 ||
+      ($saddr_number & $prange3) == (uint32)$prange3 ||
+      ($saddr_number & $prange4) == (uint32)$prange4
+    )  {
+      $saddr_public = 0;
+    }
+
+    if ( $saddr_public == 1 || $daddr_public == 1 ) {
+      @map[comm, $saddr, $daddr] += $size;
+    }
+  }
+  delete(@sk[tid]);
+  delete(@size[tid]);
+}
+
+END {
+  clear(@size);
+  clear(@sk);
+}
